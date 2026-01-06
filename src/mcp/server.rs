@@ -3,7 +3,12 @@
 use crate::GhClient;
 use crate::tools::account::GetMeRequest;
 use crate::tools::branches::{CreateBranchRequest, DeleteBranchRequest, ListBranchesRequest};
+use crate::tools::code::{GetFileRequest, ListCommitsRequest, SearchCodeRequest};
 use crate::tools::protection::{DeleteBranchProtectionRequest, GetBranchProtectionRequest, SetBranchProtectionRequest};
+use crate::tools::prs::{
+    ClosePrRequest, CommentPrRequest, CreatePrRequest, EditPrRequest, GetPrDiffRequest, GetPrFilesRequest,
+    GetPrRequest, ListPrsRequest, MergePrRequest, SearchPrsRequest,
+};
 use crate::tools::repos::{ArchiveRepoRequest, CreateRepoRequest, GetRepoRequest, ListReposRequest};
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -336,6 +341,348 @@ impl GitHubMcpServer {
             "Branch protection removed from '{}'",
             params.0.branch
         ))]))
+    }
+
+    // ============================================
+    // Pull Request Tools
+    // ============================================
+
+    /// Get details about a specific pull request
+    #[tool(description = "Get detailed information about a specific pull request.")]
+    async fn get_pr(&self, params: Parameters<GetPrRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let args = vec![
+            "pr",
+            "view",
+            &number_str,
+            "--repo",
+            &repo,
+            "--json",
+            "number,title,state,body,author,createdAt,updatedAt,url,headRefName,baseRefName,mergeable,additions,deletions,changedFiles",
+        ];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Get the diff of a pull request
+    #[tool(description = "Get the diff/patch of a pull request.")]
+    async fn get_pr_diff(&self, params: Parameters<GetPrDiffRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let args = vec!["pr", "diff", &number_str, "--repo", &repo];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::text(
+            result.as_str().unwrap_or("").to_string(),
+        )]))
+    }
+
+    /// Get files changed in a pull request
+    #[tool(description = "Get the list of files changed in a pull request.")]
+    async fn get_pr_files(&self, params: Parameters<GetPrFilesRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let args = vec!["pr", "view", &number_str, "--repo", &repo, "--json", "files"];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// List pull requests in a repository
+    #[tool(description = "List pull requests in a repository with optional filters.")]
+    async fn list_prs(&self, params: Parameters<ListPrsRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec!["pr", "list", "--repo", &repo];
+
+        let state;
+        if let Some(ref s) = params.0.state {
+            state = format!("--state={s}");
+            args.push(&state);
+        }
+
+        let limit_str;
+        if let Some(limit) = params.0.limit {
+            limit_str = limit.to_string();
+            args.push("--limit");
+            args.push(&limit_str);
+        }
+
+        let base;
+        if let Some(ref b) = params.0.base {
+            base = format!("--base={b}");
+            args.push(&base);
+        }
+
+        let head;
+        if let Some(ref h) = params.0.head {
+            head = format!("--head={h}");
+            args.push(&head);
+        }
+
+        args.push("--json");
+        args.push("number,title,state,author,createdAt,updatedAt,url,headRefName,baseRefName");
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Search pull requests
+    #[tool(description = "Search pull requests using GitHub search syntax.")]
+    async fn search_prs(&self, params: Parameters<SearchPrsRequest>) -> Result<CallToolResult, McpError> {
+        let mut args = vec!["search", "prs", &params.0.query];
+
+        let limit_str;
+        if let Some(limit) = params.0.limit {
+            limit_str = limit.to_string();
+            args.push("--limit");
+            args.push(&limit_str);
+        }
+
+        args.push("--json");
+        args.push("number,title,state,author,repository,createdAt,updatedAt,url");
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Create a new pull request
+    #[tool(description = "Create a new pull request.")]
+    async fn create_pr(&self, params: Parameters<CreatePrRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec![
+            "pr",
+            "create",
+            "--repo",
+            &repo,
+            "--title",
+            &params.0.title,
+            "--head",
+            &params.0.head,
+        ];
+
+        let body;
+        if let Some(ref b) = params.0.body {
+            body = format!("--body={b}");
+            args.push(&body);
+        }
+
+        let base;
+        if let Some(ref b) = params.0.base {
+            base = format!("--base={b}");
+            args.push(&base);
+        }
+
+        if params.0.draft.unwrap_or(false) {
+            args.push("--draft");
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Edit an existing pull request
+    #[tool(description = "Edit an existing pull request's title, body, or base branch.")]
+    async fn edit_pr(&self, params: Parameters<EditPrRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let mut args = vec!["pr", "edit", &number_str, "--repo", &repo];
+
+        let title;
+        if let Some(ref t) = params.0.title {
+            title = format!("--title={t}");
+            args.push(&title);
+        }
+
+        let body;
+        if let Some(ref b) = params.0.body {
+            body = format!("--body={b}");
+            args.push(&body);
+        }
+
+        let base;
+        if let Some(ref b) = params.0.base {
+            base = format!("--base={b}");
+            args.push(&base);
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Merge a pull request
+    #[tool(description = "Merge a pull request. Supports merge, squash, and rebase methods.")]
+    async fn merge_pr(&self, params: Parameters<MergePrRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let mut args = vec!["pr", "merge", &number_str, "--repo", &repo];
+
+        match params.0.method.as_deref() {
+            Some("squash") => args.push("--squash"),
+            Some("rebase") => args.push("--rebase"),
+            _ => args.push("--merge"),
+        }
+
+        if params.0.delete_branch.unwrap_or(false) {
+            args.push("--delete-branch");
+        }
+
+        let commit_msg;
+        if let Some(ref msg) = params.0.commit_message {
+            commit_msg = format!("--body={msg}");
+            args.push(&commit_msg);
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Close a pull request without merging
+    #[tool(description = "Close a pull request without merging.")]
+    async fn close_pr(&self, params: Parameters<ClosePrRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let args = vec!["pr", "close", &number_str, "--repo", &repo];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Add a comment to a pull request
+    #[tool(description = "Add a comment to a pull request.")]
+    async fn comment_pr(&self, params: Parameters<CommentPrRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let number_str = params.0.number.to_string();
+        let args = vec!["pr", "comment", &number_str, "--repo", &repo, "--body", &params.0.body];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    // ============================================
+    // Code and Content Tools
+    // ============================================
+
+    /// Get contents of a file from a repository
+    #[tool(description = "Get the contents of a file from a repository.")]
+    async fn get_file(&self, params: Parameters<GetFileRequest>) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!("repos/{}/{}/contents/{}", params.0.owner, params.0.repo, params.0.path);
+
+        if let Some(ref r) = params.0.r#ref {
+            endpoint.push_str(&format!("?ref={r}"));
+        }
+
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+
+        // If content is base64 encoded, decode it
+        if let Some(content) = result["content"].as_str() {
+            let decoded = content.replace('\n', "");
+            if let Ok(bytes) = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &decoded)
+                && let Ok(text) = String::from_utf8(bytes)
+            {
+                return Ok(CallToolResult::success(vec![Content::text(text)]));
+            }
+        }
+
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Search code across repositories
+    #[tool(description = "Search code using GitHub code search syntax.")]
+    async fn search_code(&self, params: Parameters<SearchCodeRequest>) -> Result<CallToolResult, McpError> {
+        let mut args = vec!["search", "code", &params.0.query];
+
+        let limit_str;
+        if let Some(limit) = params.0.limit {
+            limit_str = limit.to_string();
+            args.push("--limit");
+            args.push(&limit_str);
+        }
+
+        args.push("--json");
+        args.push("path,repository,textMatches");
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// List commits in a repository
+    #[tool(description = "List commits in a repository with optional filters.")]
+    async fn list_commits(&self, params: Parameters<ListCommitsRequest>) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!("repos/{}/{}/commits", params.0.owner, params.0.repo);
+        let mut query_params = Vec::new();
+
+        if let Some(ref sha) = params.0.sha {
+            query_params.push(format!("sha={sha}"));
+        }
+
+        if let Some(ref path) = params.0.path {
+            query_params.push(format!("path={path}"));
+        }
+
+        if let Some(ref author) = params.0.author {
+            query_params.push(format!("author={author}"));
+        }
+
+        if let Some(limit) = params.0.limit {
+            query_params.push(format!("per_page={limit}"));
+        }
+
+        if !query_params.is_empty() {
+            endpoint.push('?');
+            endpoint.push_str(&query_params.join("&"));
+        }
+
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
     }
 }
 
