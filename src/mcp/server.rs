@@ -9,7 +9,13 @@ use crate::tools::prs::{
     ClosePrRequest, CommentPrRequest, CreatePrRequest, EditPrRequest, GetPrDiffRequest, GetPrFilesRequest,
     GetPrRequest, ListPrsRequest, MergePrRequest, SearchPrsRequest,
 };
+use crate::tools::releases::{
+    CreateReleaseRequest, DeleteReleaseRequest, DownloadReleaseAssetRequest, GetReleaseRequest,
+    ListReleaseAssetsRequest, ListReleasesRequest,
+};
 use crate::tools::repos::{ArchiveRepoRequest, CreateRepoRequest, GetRepoRequest, ListReposRequest};
+use crate::tools::tags::{CreateTagRequest, DeleteTagRequest, ListTagsRequest};
+use crate::tools::workflows::{DownloadRunArtifactRequest, ListRunArtifactsRequest, ListWorkflowRunsRequest};
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, Content, ServerInfo};
@@ -680,6 +686,335 @@ impl GitHubMcpServer {
         let result = self
             .gh
             .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    // ============================================
+    // Release Tools
+    // ============================================
+
+    /// List releases in a repository
+    #[tool(description = "List releases in a repository.")]
+    async fn list_releases(&self, params: Parameters<ListReleasesRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec!["release", "list", "--repo", &repo];
+
+        let limit_str;
+        if let Some(limit) = params.0.limit {
+            limit_str = limit.to_string();
+            args.push("--limit");
+            args.push(&limit_str);
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Get details about a specific release
+    #[tool(description = "Get detailed information about a specific release by tag.")]
+    async fn get_release(&self, params: Parameters<GetReleaseRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let args = vec![
+            "release",
+            "view",
+            &params.0.tag,
+            "--repo",
+            &repo,
+            "--json",
+            "tagName,name,body,author,createdAt,publishedAt,isDraft,isPrerelease,assets,url",
+        ];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Create a new release
+    #[tool(description = "Create a new release with optional release notes.")]
+    async fn create_release(&self, params: Parameters<CreateReleaseRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec!["release", "create", &params.0.tag, "--repo", &repo];
+
+        let title;
+        if let Some(ref t) = params.0.title {
+            title = format!("--title={t}");
+            args.push(&title);
+        }
+
+        let notes;
+        if let Some(ref n) = params.0.notes {
+            notes = format!("--notes={n}");
+            args.push(&notes);
+        }
+
+        let target;
+        if let Some(ref t) = params.0.target {
+            target = format!("--target={t}");
+            args.push(&target);
+        }
+
+        if params.0.draft.unwrap_or(false) {
+            args.push("--draft");
+        }
+
+        if params.0.prerelease.unwrap_or(false) {
+            args.push("--prerelease");
+        }
+
+        if params.0.generate_notes.unwrap_or(false) {
+            args.push("--generate-notes");
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Delete a release
+    #[tool(description = "Delete a release by tag. Optionally delete the associated git tag.")]
+    async fn delete_release(&self, params: Parameters<DeleteReleaseRequest>) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec!["release", "delete", &params.0.tag, "--repo", &repo, "--yes"];
+
+        if params.0.delete_tag.unwrap_or(false) {
+            args.push("--cleanup-tag");
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// List assets in a release
+    #[tool(description = "List assets (files) attached to a release.")]
+    async fn list_release_assets(
+        &self,
+        params: Parameters<ListReleaseAssetsRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let args = vec!["release", "view", &params.0.tag, "--repo", &repo, "--json", "assets"];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Download release assets
+    #[tool(description = "Download assets from a release.")]
+    async fn download_release_asset(
+        &self,
+        params: Parameters<DownloadReleaseAssetRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec!["release", "download", &params.0.tag, "--repo", &repo];
+
+        let pattern;
+        if let Some(ref p) = params.0.pattern {
+            pattern = format!("--pattern={p}");
+            args.push(&pattern);
+        }
+
+        let dir;
+        if let Some(ref d) = params.0.dir {
+            dir = format!("--dir={d}");
+            args.push(&dir);
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    // ============================================
+    // Tag Tools
+    // ============================================
+
+    /// List tags in a repository
+    #[tool(description = "List git tags in a repository.")]
+    async fn list_tags(&self, params: Parameters<ListTagsRequest>) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!("repos/{}/{}/tags", params.0.owner, params.0.repo);
+        if let Some(limit) = params.0.limit {
+            endpoint.push_str(&format!("?per_page={limit}"));
+        }
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Create a new tag
+    #[tool(description = "Create a new git tag pointing to a specific commit.")]
+    async fn create_tag(&self, params: Parameters<CreateTagRequest>) -> Result<CallToolResult, McpError> {
+        // Get the target SHA if not provided
+        let sha = if let Some(ref s) = params.0.sha {
+            s.clone()
+        } else {
+            // Get HEAD of default branch
+            let repo_endpoint = format!("repos/{}/{}", params.0.owner, params.0.repo);
+            let repo_info = self
+                .gh
+                .api(params.0.account.as_deref(), &repo_endpoint, None, None)
+                .await
+                .map_err(Self::err)?;
+            let default_branch = repo_info["default_branch"].as_str().unwrap_or("main");
+
+            let ref_endpoint = format!(
+                "repos/{}/{}/git/ref/heads/{}",
+                params.0.owner, params.0.repo, default_branch
+            );
+            let ref_info = self
+                .gh
+                .api(params.0.account.as_deref(), &ref_endpoint, None, None)
+                .await
+                .map_err(Self::err)?;
+            ref_info["object"]["sha"].as_str().unwrap_or("").to_string()
+        };
+
+        // Create the tag ref
+        let endpoint = format!("repos/{}/{}/git/refs", params.0.owner, params.0.repo);
+        let ref_name = format!("refs/tags/{}", params.0.tag);
+        let ref_arg = format!("ref={ref_name}");
+        let sha_arg = format!("sha={sha}");
+
+        let args = vec!["api", "-X", "POST", &endpoint, "-f", &ref_arg, "-f", &sha_arg];
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Delete a tag
+    #[tool(description = "Delete a git tag from a repository.")]
+    async fn delete_tag(&self, params: Parameters<DeleteTagRequest>) -> Result<CallToolResult, McpError> {
+        let endpoint = format!(
+            "repos/{}/{}/git/refs/tags/{}",
+            params.0.owner, params.0.repo, params.0.tag
+        );
+        self.gh
+            .api(params.0.account.as_deref(), &endpoint, Some("DELETE"), None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Tag '{}' deleted successfully",
+            params.0.tag
+        ))]))
+    }
+
+    // ============================================
+    // Workflow and Artifact Tools
+    // ============================================
+
+    /// List workflow runs in a repository
+    #[tool(description = "List GitHub Actions workflow runs in a repository.")]
+    async fn list_workflow_runs(
+        &self,
+        params: Parameters<ListWorkflowRunsRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let mut args = vec!["run", "list", "--repo", &repo];
+
+        let workflow;
+        if let Some(ref w) = params.0.workflow {
+            workflow = format!("--workflow={w}");
+            args.push(&workflow);
+        }
+
+        let branch;
+        if let Some(ref b) = params.0.branch {
+            branch = format!("--branch={b}");
+            args.push(&branch);
+        }
+
+        let status;
+        if let Some(ref s) = params.0.status {
+            status = format!("--status={s}");
+            args.push(&status);
+        }
+
+        let limit_str;
+        if let Some(limit) = params.0.limit {
+            limit_str = limit.to_string();
+            args.push("--limit");
+            args.push(&limit_str);
+        }
+
+        args.push("--json");
+        args.push("databaseId,workflowName,status,conclusion,headBranch,event,createdAt,url");
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// List artifacts from a workflow run
+    #[tool(description = "List artifacts from a specific workflow run.")]
+    async fn list_run_artifacts(
+        &self,
+        params: Parameters<ListRunArtifactsRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let endpoint = format!(
+            "repos/{}/{}/actions/runs/{}/artifacts",
+            params.0.owner, params.0.repo, params.0.run_id
+        );
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Download artifacts from a workflow run
+    #[tool(description = "Download artifacts from a workflow run.")]
+    async fn download_run_artifact(
+        &self,
+        params: Parameters<DownloadRunArtifactRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let repo = format!("{}/{}", params.0.owner, params.0.repo);
+        let run_id_str = params.0.run_id.to_string();
+        let mut args = vec!["run", "download", &run_id_str, "--repo", &repo];
+
+        let name;
+        if let Some(ref n) = params.0.name {
+            name = format!("--name={n}");
+            args.push(&name);
+        }
+
+        let dir;
+        if let Some(ref d) = params.0.dir {
+            dir = format!("--dir={d}");
+            args.push(&dir);
+        }
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
         Ok(CallToolResult::success(vec![Content::json(&result)?]))

@@ -5,4 +5,7 @@ pub mod branches;
 pub mod code;
 pub mod protection;
 pub mod prs;
+pub mod releases;
 pub mod repos;
+pub mod tags;
+pub mod workflows;
