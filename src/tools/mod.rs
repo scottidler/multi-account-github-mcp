@@ -8,4 +8,5 @@ pub mod prs;
 pub mod releases;
 pub mod repos;
 pub mod tags;
+pub mod teams;
 pub mod workflows;

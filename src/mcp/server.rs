@@ -15,6 +15,10 @@ use crate::tools::releases::{
 };
 use crate::tools::repos::{ArchiveRepoRequest, CreateRepoRequest, GetRepoRequest, ListReposRequest};
 use crate::tools::tags::{CreateTagRequest, DeleteTagRequest, ListTagsRequest};
+use crate::tools::teams::{
+    AddCollaboratorRequest, GetTeamMembersRequest, ListCollaboratorsRequest, ListTeamsRequest,
+    RemoveCollaboratorRequest,
+};
 use crate::tools::workflows::{DownloadRunArtifactRequest, ListRunArtifactsRequest, ListWorkflowRunsRequest};
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -1015,6 +1019,103 @@ impl GitHubMcpServer {
         let result = self
             .gh
             .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    // ============================================
+    // Team and Collaborator Tools
+    // ============================================
+
+    /// List collaborators on a repository
+    #[tool(description = "List collaborators on a repository.")]
+    async fn list_collaborators(
+        &self,
+        params: Parameters<ListCollaboratorsRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!("repos/{}/{}/collaborators", params.0.owner, params.0.repo);
+
+        if let Some(ref affiliation) = params.0.affiliation {
+            endpoint.push_str(&format!("?affiliation={affiliation}"));
+        }
+
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Add a collaborator to a repository
+    #[tool(description = "Add a collaborator to a repository with specified permission level.")]
+    async fn add_collaborator(&self, params: Parameters<AddCollaboratorRequest>) -> Result<CallToolResult, McpError> {
+        let endpoint = format!(
+            "repos/{}/{}/collaborators/{}",
+            params.0.owner, params.0.repo, params.0.username
+        );
+
+        let permission = params.0.permission.as_deref().unwrap_or("push");
+        let perm_arg = format!("permission={permission}");
+        let args = vec!["api", "-X", "PUT", &endpoint, "-f", &perm_arg];
+
+        let result = self
+            .gh
+            .run(params.0.account.as_deref(), &args)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Remove a collaborator from a repository
+    #[tool(description = "Remove a collaborator from a repository.")]
+    async fn remove_collaborator(
+        &self,
+        params: Parameters<RemoveCollaboratorRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let endpoint = format!(
+            "repos/{}/{}/collaborators/{}",
+            params.0.owner, params.0.repo, params.0.username
+        );
+
+        self.gh
+            .api(params.0.account.as_deref(), &endpoint, Some("DELETE"), None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Collaborator '{}' removed successfully",
+            params.0.username
+        ))]))
+    }
+
+    /// List teams in an organization
+    #[tool(description = "List teams in an organization.")]
+    async fn list_teams(&self, params: Parameters<ListTeamsRequest>) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!("orgs/{}/teams", params.0.org);
+        if let Some(limit) = params.0.limit {
+            endpoint.push_str(&format!("?per_page={limit}"));
+        }
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
+            .await
+            .map_err(Self::err)?;
+        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+    }
+
+    /// Get members of a team
+    #[tool(description = "Get members of a team in an organization.")]
+    async fn get_team_members(&self, params: Parameters<GetTeamMembersRequest>) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!("orgs/{}/teams/{}/members", params.0.org, params.0.team);
+
+        if let Some(ref role) = params.0.role {
+            endpoint.push_str(&format!("?role={role}"));
+        }
+
+        let result = self
+            .gh
+            .api(params.0.account.as_deref(), &endpoint, None, None)
             .await
             .map_err(Self::err)?;
         Ok(CallToolResult::success(vec![Content::json(&result)?]))
