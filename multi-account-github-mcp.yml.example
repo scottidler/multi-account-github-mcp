@@ -1,0 +1,19 @@
+# Multi-Account GitHub MCP Server Configuration
+#
+# Copy this file to one of these locations:
+#   ~/.config/multi-account-github-mcp/multi-account-github-mcp.yml (recommended)
+#   ./multi-account-github-mcp.yml (fallback)
+#
+# Or specify a custom path with: --config /path/to/config.yml
+
+# Default account to use when 'account' parameter is not specified
+default_account: home
+
+# Map of account names to GitHub token file paths
+# Supports ~ expansion for home directory
+# Token files should contain a single GitHub Personal Access Token
+accounts:
+  home: ~/.config/github/tokens/personal
+  work: ~/.config/github/tokens/work
+  # Add more accounts as needed:
+  # oss: ~/.config/github/tokens/opensource
