@@ -42,17 +42,17 @@ fn run_accounts(config: &Config) -> Result<()> {
     let mut accounts: Vec<_> = config.accounts.iter().collect();
     accounts.sort_by_key(|(name, _)| *name);
 
-    for (name, account_config) in accounts {
+    for (name, token_path) in accounts {
         let is_default = name == &config.default_account;
         let default_marker = if is_default { " (default)" } else { "" };
 
         // Check if token file exists
-        let expanded_path = shellexpand::tilde(&account_config.token_path);
+        let expanded_path = shellexpand::tilde(token_path);
         let path = std::path::PathBuf::from(expanded_path.as_ref());
         let status = if path.exists() { "✅" } else { "❌" };
 
         println!("  {status} {name}{default_marker}");
-        println!("     Token: {}", account_config.token_path);
+        println!("     Token: {token_path}");
     }
 
     Ok(())

@@ -180,12 +180,7 @@ mod tests {
         // This creates a config that won't have valid tokens
         // Real integration tests would need actual tokens
         let mut accounts = HashMap::new();
-        accounts.insert(
-            "test".to_string(),
-            crate::config::AccountConfig {
-                token_path: "/nonexistent/path".to_string(),
-            },
-        );
+        accounts.insert("test".to_string(), "/nonexistent/path".to_string());
         Config {
             default_account: "test".to_string(),
             accounts,

@@ -6,35 +6,27 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Account configuration with token file path
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct AccountConfig {
-    /// Path to the token file (supports ~ expansion)
-    pub token_path: String,
-}
-
 /// Main configuration
+/// Simple format: accounts map directly to token file paths
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Default account to use when none specified
+    #[serde(default = "default_account")]
     pub default_account: String,
 
-    /// Map of account names to their configurations
-    pub accounts: HashMap<String, AccountConfig>,
+    /// Map of account names to token file paths (supports ~ expansion)
+    pub accounts: HashMap<String, String>,
+}
+
+fn default_account() -> String {
+    "default".to_string()
 }
 
 impl Default for Config {
     fn default() -> Self {
-        let mut accounts = HashMap::new();
-        accounts.insert(
-            "home".to_string(),
-            AccountConfig {
-                token_path: "~/.config/github/tokens/scottidler".to_string(),
-            },
-        );
         Self {
-            default_account: "home".to_string(),
-            accounts,
+            default_account: "default".to_string(),
+            accounts: HashMap::new(),
         }
     }
 }
@@ -91,18 +83,19 @@ impl Config {
         Ok(config)
     }
 
-    /// Get an account configuration by name, or the default if None
-    pub fn get_account(&self, name: Option<&str>) -> Result<&AccountConfig> {
+    /// Get the token path for an account by name, or the default if None
+    pub fn get_token_path(&self, name: Option<&str>) -> Result<&str> {
         let account_name = name.unwrap_or(&self.default_account);
         self.accounts
             .get(account_name)
+            .map(|s| s.as_str())
             .ok_or_else(|| Error::AccountNotFound(account_name.to_string()))
     }
 
     /// Get the token for an account by reading the token file
     pub fn get_token(&self, account: Option<&str>) -> Result<String> {
-        let account_config = self.get_account(account)?;
-        let expanded_path = shellexpand::tilde(&account_config.token_path);
+        let token_path = self.get_token_path(account)?;
+        let expanded_path = shellexpand::tilde(token_path);
         let path = PathBuf::from(expanded_path.as_ref());
 
         if !path.exists() {
@@ -136,8 +129,8 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = Config::default();
-        assert_eq!(config.default_account, "home");
-        assert!(config.accounts.contains_key("home"));
+        assert_eq!(config.default_account, "default");
+        assert!(config.accounts.is_empty());
     }
 
     #[test]
@@ -145,10 +138,8 @@ mod tests {
         let yaml = r#"
 default_account: work
 accounts:
-  home:
-    token_path: ~/.config/github/tokens/personal
-  work:
-    token_path: ~/.config/github/tokens/work
+  home: ~/.config/github/tokens/personal
+  work: ~/.config/github/tokens/work
 "#;
 
         let mut file = NamedTempFile::new().unwrap();
@@ -162,16 +153,21 @@ accounts:
     }
 
     #[test]
-    fn test_get_account_default() {
-        let config = Config::default();
-        let account = config.get_account(None).unwrap();
-        assert!(account.token_path.contains("scottidler"));
+    fn test_get_token_path_default() {
+        let mut accounts = HashMap::new();
+        accounts.insert("home".to_string(), "/path/to/token".to_string());
+        let config = Config {
+            default_account: "home".to_string(),
+            accounts,
+        };
+        let path = config.get_token_path(None).unwrap();
+        assert_eq!(path, "/path/to/token");
     }
 
     #[test]
     fn test_get_account_not_found() {
         let config = Config::default();
-        let result = config.get_account(Some("nonexistent"));
+        let result = config.get_token_path(Some("nonexistent"));
         assert!(matches!(result, Err(Error::AccountNotFound(_))));
     }
 
@@ -184,8 +180,7 @@ accounts:
             r#"
 default_account: test
 accounts:
-  test:
-    token_path: {}
+  test: {}
 "#,
             token_file.path().display()
         );
@@ -207,8 +202,7 @@ accounts:
             r#"
 default_account: test
 accounts:
-  test:
-    token_path: {}
+  test: {}
 "#,
             token_file.path().display()
         );
