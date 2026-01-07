@@ -8,7 +8,7 @@ pub mod gh;
 pub mod mcp;
 pub mod tools;
 
-pub use config::Config;
+pub use config::{Config, LogConfig};
 pub use error::Error;
 pub use gh::GhClient;
 

@@ -1,5 +1,6 @@
 //! MCP server implementation for GitHub multi-account
 
+use tracing::{debug, info, warn};
 use crate::GhClient;
 use crate::tools::account::GetMeRequest;
 use crate::tools::branches::{CreateBranchRequest, DeleteBranchRequest, ListBranchesRequest};
@@ -22,8 +23,8 @@ use crate::tools::teams::{
 use crate::tools::workflows::{DownloadRunArtifactRequest, ListRunArtifactsRequest, ListWorkflowRunsRequest};
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, Content, ServerInfo};
-use rmcp::{ErrorData as McpError, ServerHandler, tool, tool_router};
+use rmcp::model::{CallToolResult, Content, ServerCapabilities, ServerInfo};
+use rmcp::{ErrorData as McpError, ServerHandler, tool, tool_handler, tool_router};
 
 /// GitHub MCP server with multi-account support
 #[derive(Clone)]
@@ -36,13 +37,17 @@ pub struct GitHubMcpServer {
 impl GitHubMcpServer {
     /// Create a new GitHub MCP server
     pub fn new(gh: GhClient) -> Self {
-        Self {
-            gh,
-            tool_router: Self::tool_router(),
+        info!("Creating GitHubMcpServer");
+        let tool_router = Self::tool_router();
+        debug!("Tool router created with {} tools", tool_router.list_all().len());
+        for tool in tool_router.list_all() {
+            debug!("  - Registered tool: {}", tool.name);
         }
+        Self { gh, tool_router }
     }
 
     fn err(e: impl std::fmt::Display) -> McpError {
+        warn!("Tool error: {}", e);
         McpError::internal_error(e.to_string(), None)
     }
 }
@@ -1122,16 +1127,21 @@ impl GitHubMcpServer {
     }
 }
 
+#[tool_handler]
 impl ServerHandler for GitHubMcpServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
+        info!("MCP client requested server info");
+        let info = ServerInfo {
             instructions: Some(
                 "GitHub MCP server with multi-account support. \
                  Use the 'account' parameter to specify which GitHub account to use (e.g., 'home' or 'work'). \
                  If not specified, the default account will be used."
                     .to_string(),
             ),
+            capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
-        }
+        };
+        debug!("Returning server info: {:?}", info);
+        info
     }
 }

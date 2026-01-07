@@ -6,6 +6,22 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Logging configuration
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct LogConfig {
+    /// Log level: trace, debug, info, warn, error (default: info)
+    #[serde(default = "default_log_level")]
+    pub level: String,
+
+    /// Optional log file path (supports ~ expansion). If not set, logs to stderr.
+    #[serde(default)]
+    pub file: Option<String>,
+}
+
+fn default_log_level() -> String {
+    "info".to_string()
+}
+
 /// Main configuration
 /// Simple format: accounts map directly to token file paths
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -16,6 +32,10 @@ pub struct Config {
 
     /// Map of account names to token file paths (supports ~ expansion)
     pub accounts: HashMap<String, String>,
+
+    /// Logging configuration
+    #[serde(default)]
+    pub logging: LogConfig,
 }
 
 fn default_account() -> String {
@@ -27,6 +47,7 @@ impl Default for Config {
         Self {
             default_account: "default".to_string(),
             accounts: HashMap::new(),
+            logging: LogConfig::default(),
         }
     }
 }

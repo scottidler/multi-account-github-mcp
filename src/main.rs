@@ -2,35 +2,75 @@
 
 use clap::Parser;
 use eyre::{Context, Result};
-use multi_account_github_mcp::{Config, GhClient};
+use multi_account_github_mcp::{Config, LogConfig, GhClient};
 use rmcp::ServiceExt;
 use std::io::{self, Write};
+use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
 mod cli;
 
 use cli::{Cli, Commands};
 
-fn setup_logging(verbose: bool) -> Result<()> {
-    let filter = if verbose { EnvFilter::new("debug") } else { EnvFilter::new("info") };
+fn setup_logging(verbose: bool, log_config: &LogConfig) -> Result<()> {
+    // Determine log level: CLI verbose flag overrides config
+    let level = if verbose {
+        "debug"
+    } else {
+        &log_config.level
+    };
+    let filter = EnvFilter::new(level);
 
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_writer(io::stderr)
-        .init();
+    // If log file is configured, write to file; otherwise write to stderr
+    if let Some(ref log_file) = log_config.file {
+        let expanded_path = shellexpand::tilde(log_file);
+        let path = PathBuf::from(expanded_path.as_ref());
+
+        // Create parent directories if needed
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)?;
+
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_writer(file)
+            .with_ansi(false)
+            .init();
+
+        eprintln!("Logging to: {}", path.display());
+    } else {
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_writer(io::stderr)
+            .init();
+    }
 
     Ok(())
 }
 
 async fn run_serve(config: Config) -> Result<()> {
+    tracing::debug!("Creating GitHub client with config: {:?}", config);
     let gh = GhClient::new(config).context("Failed to create GitHub client")?;
+    tracing::debug!("GitHub client created successfully");
+
+    tracing::info!("Creating MCP server");
     let server = multi_account_github_mcp::mcp::GitHubMcpServer::new(gh);
+    tracing::debug!("MCP server created");
 
-    tracing::info!("Starting MCP server on stdio");
-
+    tracing::info!("Starting MCP server on stdio transport");
     let transport = (tokio::io::stdin(), tokio::io::stdout());
+
+    tracing::debug!("Calling server.serve() to start MCP protocol");
     let service = server.serve(transport).await?;
+    tracing::info!("MCP server started, waiting for requests...");
+
     service.waiting().await?;
+    tracing::info!("MCP server shutting down");
 
     Ok(())
 }
@@ -96,20 +136,14 @@ async fn run_test(config: Config, account: Option<String>) -> Result<()> {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Setup logging (only for non-serve commands, serve uses stderr)
-    if !matches!(cli.command, Commands::Serve) {
-        setup_logging(cli.verbose)?;
-    }
-
-    // Load configuration
+    // Load configuration first (needed for logging setup)
     let config = Config::load(cli.config.as_ref()).context("Failed to load configuration")?;
 
+    // Setup logging with config
+    setup_logging(cli.verbose, &config.logging)?;
+
     match cli.command {
-        Commands::Serve => {
-            // For serve, setup minimal logging to stderr
-            setup_logging(cli.verbose)?;
-            run_serve(config).await
-        }
+        Commands::Serve => run_serve(config).await,
         Commands::Accounts => run_accounts(&config),
         Commands::Test { account } => run_test(config, account).await,
     }
