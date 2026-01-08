@@ -174,6 +174,7 @@ impl GhClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::LogConfig;
     use std::collections::HashMap;
 
     fn mock_config() -> Config {
@@ -184,6 +185,7 @@ mod tests {
         Config {
             default_account: "test".to_string(),
             accounts,
+            logging: LogConfig::default(),
         }
     }
 

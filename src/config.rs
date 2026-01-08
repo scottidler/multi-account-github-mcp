@@ -180,6 +180,7 @@ accounts:
         let config = Config {
             default_account: "home".to_string(),
             accounts,
+            logging: LogConfig::default(),
         };
         let path = config.get_token_path(None).unwrap();
         assert_eq!(path, "/path/to/token");
