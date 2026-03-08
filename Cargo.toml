@@ -37,4 +37,5 @@ which = "7.0"
 [dev-dependencies]
 assert_cmd = "2.0"
 predicates = "3.1"
+temp-env = "0.3.6"
 tempfile = "3.15"

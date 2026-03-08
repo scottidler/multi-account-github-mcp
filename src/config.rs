@@ -104,8 +104,9 @@ impl Config {
         Ok(config)
     }
 
-    /// Get the token path for an account by name, or the default if None
-    pub fn get_token_path(&self, name: Option<&str>) -> Result<&str> {
+    /// Get the token source for an account by name, or the default if None.
+    /// The source may be an `env:VAR_NAME` reference or a file path.
+    pub fn get_token_source(&self, name: Option<&str>) -> Result<&str> {
         let account_name = name.unwrap_or(&self.default_account);
         self.accounts
             .get(account_name)
@@ -113,10 +114,24 @@ impl Config {
             .ok_or_else(|| Error::AccountNotFound(account_name.to_string()))
     }
 
-    /// Get the token for an account by reading the token file
+    /// Get the token for an account.
+    /// If the source starts with `env:`, read from the named environment variable.
+    /// Otherwise, read from a file path (existing behavior).
     pub fn get_token(&self, account: Option<&str>) -> Result<String> {
-        let token_path = self.get_token_path(account)?;
-        let expanded_path = shellexpand::tilde(token_path);
+        let source = self.get_token_source(account)?;
+
+        if let Some(var_name) = source.strip_prefix("env:") {
+            let token = std::env::var(var_name)
+                .map_err(|_| Error::EnvVarNotFound(var_name.to_string()))?
+                .trim()
+                .to_string();
+            if token.is_empty() {
+                return Err(Error::EnvVarNotFound(var_name.to_string()));
+            }
+            return Ok(token);
+        }
+
+        let expanded_path = shellexpand::tilde(source);
         let path = PathBuf::from(expanded_path.as_ref());
 
         if !path.exists() {
@@ -174,7 +189,7 @@ accounts:
     }
 
     #[test]
-    fn test_get_token_path_default() {
+    fn test_get_token_source_default() {
         let mut accounts = HashMap::new();
         accounts.insert("home".to_string(), "/path/to/token".to_string());
         let config = Config {
@@ -182,14 +197,14 @@ accounts:
             accounts,
             logging: LogConfig::default(),
         };
-        let path = config.get_token_path(None).unwrap();
-        assert_eq!(path, "/path/to/token");
+        let source = config.get_token_source(None).unwrap();
+        assert_eq!(source, "/path/to/token");
     }
 
     #[test]
     fn test_get_account_not_found() {
         let config = Config::default();
-        let result = config.get_token_path(Some("nonexistent"));
+        let result = config.get_token_source(Some("nonexistent"));
         assert!(matches!(result, Err(Error::AccountNotFound(_))));
     }
 
@@ -235,5 +250,87 @@ accounts:
         let config = Config::load_from_file(config_file.path()).unwrap();
         let token = config.get_token(Some("test")).unwrap();
         assert_eq!(token, "ghp_token_with_whitespace");
+    }
+
+    #[test]
+    fn test_get_token_from_env_var() {
+        let mut accounts = HashMap::new();
+        accounts.insert("test".to_string(), "env:TEST_GH_TOKEN_ABC".to_string());
+        let config = Config {
+            default_account: "test".to_string(),
+            accounts,
+            logging: LogConfig::default(),
+        };
+
+        temp_env::with_var("TEST_GH_TOKEN_ABC", Some("ghp_env_token_12345"), || {
+            let token = config.get_token(Some("test")).unwrap();
+            assert_eq!(token, "ghp_env_token_12345");
+        });
+    }
+
+    #[test]
+    fn test_get_token_env_var_missing() {
+        let mut accounts = HashMap::new();
+        accounts.insert("test".to_string(), "env:TEST_GH_MISSING_VAR".to_string());
+        let config = Config {
+            default_account: "test".to_string(),
+            accounts,
+            logging: LogConfig::default(),
+        };
+
+        temp_env::with_var_unset("TEST_GH_MISSING_VAR", || {
+            let result = config.get_token(Some("test"));
+            assert!(matches!(result, Err(Error::EnvVarNotFound(_))));
+        });
+    }
+
+    #[test]
+    fn test_get_token_env_var_empty() {
+        let mut accounts = HashMap::new();
+        accounts.insert("test".to_string(), "env:TEST_GH_EMPTY_VAR".to_string());
+        let config = Config {
+            default_account: "test".to_string(),
+            accounts,
+            logging: LogConfig::default(),
+        };
+
+        temp_env::with_var("TEST_GH_EMPTY_VAR", Some(""), || {
+            let result = config.get_token(Some("test"));
+            assert!(matches!(result, Err(Error::EnvVarNotFound(_))));
+        });
+    }
+
+    #[test]
+    fn test_get_token_env_var_trimmed() {
+        let mut accounts = HashMap::new();
+        accounts.insert("test".to_string(), "env:TEST_GH_TRIM_VAR".to_string());
+        let config = Config {
+            default_account: "test".to_string(),
+            accounts,
+            logging: LogConfig::default(),
+        };
+
+        temp_env::with_var("TEST_GH_TRIM_VAR", Some("  ghp_trimmed  \n"), || {
+            let token = config.get_token(Some("test")).unwrap();
+            assert_eq!(token, "ghp_trimmed");
+        });
+    }
+
+    #[test]
+    fn test_file_path_unchanged_with_env_prefix_feature() {
+        // Ensure regular file paths still work alongside env: support
+        let mut token_file = NamedTempFile::new().unwrap();
+        token_file.write_all(b"ghp_file_token").unwrap();
+
+        let mut accounts = HashMap::new();
+        accounts.insert("file_account".to_string(), token_file.path().display().to_string());
+        let config = Config {
+            default_account: "file_account".to_string(),
+            accounts,
+            logging: LogConfig::default(),
+        };
+
+        let token = config.get_token(Some("file_account")).unwrap();
+        assert_eq!(token, "ghp_file_token");
     }
 }

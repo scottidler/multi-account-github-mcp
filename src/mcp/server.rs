@@ -1,6 +1,5 @@
 //! MCP server implementation for GitHub multi-account
 
-use tracing::{debug, info, warn};
 use crate::GhClient;
 use crate::tools::account::GetMeRequest;
 use crate::tools::branches::{CreateBranchRequest, DeleteBranchRequest, ListBranchesRequest};
@@ -25,6 +24,7 @@ use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, Content, ServerCapabilities, ServerInfo};
 use rmcp::{ErrorData as McpError, ServerHandler, tool, tool_handler, tool_router};
+use tracing::{debug, info, warn};
 
 /// GitHub MCP server with multi-account support
 #[derive(Clone)]

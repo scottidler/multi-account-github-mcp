@@ -2,7 +2,7 @@
 
 use clap::Parser;
 use eyre::{Context, Result};
-use multi_account_github_mcp::{Config, LogConfig, GhClient};
+use multi_account_github_mcp::{Config, GhClient, LogConfig};
 use rmcp::ServiceExt;
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -14,11 +14,7 @@ use cli::{Cli, Commands};
 
 fn setup_logging(verbose: bool, log_config: &LogConfig) -> Result<()> {
     // Determine log level: CLI verbose flag overrides config
-    let level = if verbose {
-        "debug"
-    } else {
-        &log_config.level
-    };
+    let level = if verbose { "debug" } else { &log_config.level };
     let filter = EnvFilter::new(level);
 
     // If log file is configured, write to file; otherwise write to stderr
@@ -31,10 +27,7 @@ fn setup_logging(verbose: bool, log_config: &LogConfig) -> Result<()> {
             std::fs::create_dir_all(parent)?;
         }
 
-        let file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        let file = std::fs::OpenOptions::new().create(true).append(true).open(&path)?;
 
         tracing_subscriber::fmt()
             .with_env_filter(filter)
@@ -82,17 +75,25 @@ fn run_accounts(config: &Config) -> Result<()> {
     let mut accounts: Vec<_> = config.accounts.iter().collect();
     accounts.sort_by_key(|(name, _)| *name);
 
-    for (name, token_path) in accounts {
+    for (name, source) in accounts {
         let is_default = name == &config.default_account;
         let default_marker = if is_default { " (default)" } else { "" };
 
-        // Check if token file exists
-        let expanded_path = shellexpand::tilde(token_path);
-        let path = std::path::PathBuf::from(expanded_path.as_ref());
-        let status = if path.exists() { "✅" } else { "❌" };
+        let status = if let Some(var_name) = source.strip_prefix("env:") {
+            // Validate env var is set and non-empty
+            match std::env::var(var_name) {
+                Ok(val) if !val.trim().is_empty() => "✅",
+                _ => "❌",
+            }
+        } else {
+            // Validate file exists
+            let expanded_path = shellexpand::tilde(source);
+            let path = std::path::PathBuf::from(expanded_path.as_ref());
+            if path.exists() { "✅" } else { "❌" }
+        };
 
         println!("  {status} {name}{default_marker}");
-        println!("     Token: {token_path}");
+        println!("     Token: {source}");
     }
 
     Ok(())

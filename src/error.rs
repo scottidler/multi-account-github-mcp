@@ -16,6 +16,9 @@ pub enum Error {
     #[error("Token file read error: {0}")]
     TokenRead(String),
 
+    #[error("Environment variable not found or empty: {0}")]
+    EnvVarNotFound(String),
+
     #[error("gh CLI error: {0}")]
     GhCli(String),
 

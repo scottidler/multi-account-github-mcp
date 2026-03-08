@@ -9,11 +9,13 @@
 # Default account to use when 'account' parameter is not specified
 default_account: home
 
-# Map of account names to GitHub token file paths
-# Supports ~ expansion for home directory
-# Token files should contain a single GitHub Personal Access Token
+# Map of account names to token sources
+# Supports two formats:
+#   env:VAR_NAME  - read token from environment variable
+#   ~/path/to/file - read token from file (supports ~ expansion)
 accounts:
-  home: ~/.config/github/tokens/personal
-  work: ~/.config/github/tokens/work
-  # Add more accounts as needed:
+  # Environment variable tokens (recommended with age-encrypted secrets)
+  home: env:GITHUB_PAT_HOME
+  work: env:GITHUB_PAT_WORK
+  # File-based tokens still work:
   # oss: ~/.config/github/tokens/opensource
