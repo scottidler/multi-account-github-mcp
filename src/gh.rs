@@ -1,10 +1,17 @@
 //! gh CLI wrapper for multi-account-github-mcp
 
 use crate::{Config, Error, Result};
+use dashmap::DashMap;
+use governor::clock::DefaultClock;
+use governor::state::{InMemoryState, NotKeyed};
+use governor::{Quota, RateLimiter as GovRateLimiter};
 use serde_json::Value;
+use std::num::NonZeroU32;
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::Command;
+
+type Limiter = GovRateLimiter<NotKeyed, InMemoryState, DefaultClock>;
 
 /// Extract rate limit reset timestamp from GitHub error message
 fn extract_rate_limit_reset(error_msg: &str) -> String {
@@ -60,10 +67,18 @@ fn classify_gh_error(error_msg: &str, account: Option<&str>, args: &[&str]) -> E
     Error::GhCli(error_msg.trim().to_string())
 }
 
+fn make_limiter(requests_per_minute: u32) -> Arc<Limiter> {
+    let rpm = requests_per_minute.max(1);
+    let quota = Quota::per_minute(NonZeroU32::new(rpm).expect("rpm is at least 1"));
+    Arc::new(GovRateLimiter::direct(quota))
+}
+
 /// Client for executing gh CLI commands with account-specific tokens
 #[derive(Debug, Clone)]
 pub struct GhClient {
     config: Arc<Config>,
+    general_limiters: Arc<DashMap<String, Arc<Limiter>>>,
+    search_limiters: Arc<DashMap<String, Arc<Limiter>>>,
 }
 
 impl GhClient {
@@ -76,12 +91,25 @@ impl GhClient {
 
         Ok(Self {
             config: Arc::new(config),
+            general_limiters: Arc::new(DashMap::new()),
+            search_limiters: Arc::new(DashMap::new()),
         })
     }
 
     /// Get the underlying config
     pub fn config(&self) -> &Config {
         &self.config
+    }
+
+    fn get_limiter(&self, account: Option<&str>, is_search: bool) -> Arc<Limiter> {
+        let key = account.unwrap_or(&self.config.default_account).to_string();
+        let map = if is_search { &self.search_limiters } else { &self.general_limiters };
+        let rpm = if is_search {
+            self.config.rate_limit.search_requests_per_minute
+        } else {
+            self.config.rate_limit.requests_per_minute
+        };
+        map.entry(key).or_insert_with(|| make_limiter(rpm)).clone()
     }
 
     /// Run a gh command with the specified account's token
@@ -93,6 +121,32 @@ impl GhClient {
     /// # Returns
     /// Parsed JSON output from gh command
     pub async fn run(&self, account: Option<&str>, args: &[&str]) -> Result<Value> {
+        let is_search = args.first().is_some_and(|a| *a == "search");
+
+        // All requests go through the general limiter
+        let general = self.get_limiter(account, false);
+        if general.check().is_err() {
+            tracing::debug!(
+                account = account.unwrap_or("default"),
+                command = %args.join(" "),
+                "Rate limited - waiting for general quota"
+            );
+        }
+        general.until_ready().await;
+
+        // Search requests additionally go through the search limiter
+        if is_search {
+            let search = self.get_limiter(account, true);
+            if search.check().is_err() {
+                tracing::debug!(
+                    account = account.unwrap_or("default"),
+                    command = %args.join(" "),
+                    "Rate limited - waiting for search quota"
+                );
+            }
+            search.until_ready().await;
+        }
+
         let token = self.config.get_token(account)?;
 
         tracing::debug!(
@@ -136,6 +190,32 @@ impl GhClient {
 
     /// Run a gh command and return raw string output (for non-JSON commands like diff)
     pub async fn run_raw(&self, account: Option<&str>, args: &[&str]) -> Result<String> {
+        let is_search = args.first().is_some_and(|a| *a == "search");
+
+        // All requests go through the general limiter
+        let general = self.get_limiter(account, false);
+        if general.check().is_err() {
+            tracing::debug!(
+                account = account.unwrap_or("default"),
+                command = %args.join(" "),
+                "Rate limited - waiting for general quota"
+            );
+        }
+        general.until_ready().await;
+
+        // Search requests additionally go through the search limiter
+        if is_search {
+            let search = self.get_limiter(account, true);
+            if search.check().is_err() {
+                tracing::debug!(
+                    account = account.unwrap_or("default"),
+                    command = %args.join(" "),
+                    "Rate limited - waiting for search quota"
+                );
+            }
+            search.until_ready().await;
+        }
+
         let token = self.config.get_token(account)?;
 
         tracing::debug!(
@@ -334,6 +414,45 @@ mod tests {
         match err {
             Error::GhCli(msg) => assert_eq!(msg, "repository not found"),
             other => panic!("Expected GhCli, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_make_limiter_does_not_panic_with_zero() {
+        let limiter = make_limiter(0);
+        assert!(limiter.check().is_ok());
+    }
+
+    #[test]
+    fn test_make_limiter_normal_value() {
+        let limiter = make_limiter(80);
+        assert!(limiter.check().is_ok());
+    }
+
+    #[test]
+    fn test_get_limiter_same_account_returns_same_limiter() {
+        if let Ok(client) = GhClient::new(mock_config()) {
+            let l1 = client.get_limiter(Some("test"), false);
+            let l2 = client.get_limiter(Some("test"), false);
+            assert!(Arc::ptr_eq(&l1, &l2));
+        }
+    }
+
+    #[test]
+    fn test_get_limiter_different_accounts_return_different_limiters() {
+        if let Ok(client) = GhClient::new(mock_config()) {
+            let l1 = client.get_limiter(Some("account-a"), false);
+            let l2 = client.get_limiter(Some("account-b"), false);
+            assert!(!Arc::ptr_eq(&l1, &l2));
+        }
+    }
+
+    #[test]
+    fn test_get_limiter_search_vs_general_different() {
+        if let Ok(client) = GhClient::new(mock_config()) {
+            let general = client.get_limiter(Some("test"), false);
+            let search = client.get_limiter(Some("test"), true);
+            assert!(!Arc::ptr_eq(&general, &search));
         }
     }
 }
