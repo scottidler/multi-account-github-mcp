@@ -22,6 +22,9 @@ pub enum Error {
     #[error("gh CLI error: {0}")]
     GhCli(String),
 
+    #[error("GitHub API rate limit exceeded for account '{account}': resets at {reset_at}")]
+    RateLimit { account: String, reset_at: String },
+
     #[error("gh CLI not found. Install from https://cli.github.com")]
     GhNotFound,
 

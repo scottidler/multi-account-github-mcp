@@ -6,6 +6,7 @@ pub mod config;
 pub mod error;
 pub mod gh;
 pub mod mcp;
+pub mod serde;
 pub mod tools;
 
 pub use config::{Config, LogConfig};

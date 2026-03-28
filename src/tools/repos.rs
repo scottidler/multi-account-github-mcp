@@ -1,5 +1,6 @@
 //! Repository-related tool request types
 
+use crate::serde::flexible_u64_opt;
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -41,7 +42,8 @@ pub struct ListReposRequest {
 
     /// Maximum number of repos to return
     #[schemars(description = "Maximum number of repos to return (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 /// Request parameters for get_repo tool

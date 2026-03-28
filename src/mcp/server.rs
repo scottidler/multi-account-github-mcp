@@ -96,10 +96,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// List repositories for a user or organization
@@ -392,12 +392,10 @@ impl GitHubMcpServer {
         let args = vec!["pr", "diff", &number_str, "--repo", &repo];
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::text(
-            result.as_str().unwrap_or("").to_string(),
-        )]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// Get files changed in a pull request
@@ -512,10 +510,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// Edit an existing pull request
@@ -545,10 +543,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// Merge a pull request
@@ -576,10 +574,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// Close a pull request without merging
@@ -590,10 +588,10 @@ impl GitHubMcpServer {
         let args = vec!["pr", "close", &number_str, "--repo", &repo];
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// Add a comment to a pull request
@@ -604,10 +602,10 @@ impl GitHubMcpServer {
         let args = vec!["pr", "comment", &number_str, "--repo", &repo, "--body", &params.0.body];
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ============================================
@@ -717,6 +715,9 @@ impl GitHubMcpServer {
             args.push(&limit_str);
         }
 
+        args.push("--json");
+        args.push("tagName,name,createdAt,publishedAt,isDraft,isLatest,isPrerelease");
+
         let result = self
             .gh
             .run(params.0.account.as_deref(), &args)
@@ -784,10 +785,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// Delete a release
@@ -802,10 +803,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     /// List assets in a release
@@ -847,10 +848,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ============================================
@@ -1023,10 +1024,10 @@ impl GitHubMcpServer {
 
         let result = self
             .gh
-            .run(params.0.account.as_deref(), &args)
+            .run_raw(params.0.account.as_deref(), &args)
             .await
             .map_err(Self::err)?;
-        Ok(CallToolResult::success(vec![Content::json(&result)?]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ============================================

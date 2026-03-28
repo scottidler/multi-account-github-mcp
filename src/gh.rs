@@ -6,6 +6,60 @@ use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::Command;
 
+/// Extract rate limit reset timestamp from GitHub error message
+fn extract_rate_limit_reset(error_msg: &str) -> String {
+    if let Some(idx) = error_msg.find("timestamp ") {
+        let start = idx + "timestamp ".len();
+        if let Some(end) = error_msg[start..].find(" UTC") {
+            return format!("{} UTC", &error_msg[start..start + end]);
+        }
+    }
+    "unknown".to_string()
+}
+
+/// Classify a gh CLI error into a specific error variant
+fn classify_gh_error(error_msg: &str, account: Option<&str>, args: &[&str]) -> Error {
+    let account_label = account.unwrap_or("default");
+    let command = args.join(" ");
+
+    // Check rate limit first (most specific)
+    if error_msg.contains("rate limit exceeded")
+        || error_msg.contains("secondary rate limit")
+        || (error_msg.contains("HTTP 403") && error_msg.contains("rate limit"))
+    {
+        let reset_at = extract_rate_limit_reset(error_msg);
+        tracing::warn!(
+            account = account_label,
+            command = %command,
+            reset = %reset_at,
+            "GitHub API rate limit exceeded"
+        );
+        return Error::RateLimit {
+            account: account_label.to_string(),
+            reset_at,
+        };
+    }
+
+    // Check scope errors
+    if error_msg.contains("missing_scope") || error_msg.contains("insufficient_scope") {
+        tracing::warn!(
+            account = account_label,
+            command = %command,
+            "GitHub API scope error - PAT may lack required permissions"
+        );
+        return Error::GhCli(format!(
+            "Missing OAuth scope for account '{}'. Command: gh {}. \
+             Check that the PAT has the required scopes. Error: {}",
+            account_label,
+            command,
+            error_msg.trim()
+        ));
+    }
+
+    // Generic error (existing behavior)
+    Error::GhCli(error_msg.trim().to_string())
+}
+
 /// Client for executing gh CLI commands with account-specific tokens
 #[derive(Debug, Clone)]
 pub struct GhClient {
@@ -63,7 +117,7 @@ impl GhClient {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
             let error_msg = if stderr.is_empty() { stdout.to_string() } else { stderr.to_string() };
-            return Err(Error::GhCli(error_msg.trim().to_string()));
+            return Err(classify_gh_error(&error_msg, account, args));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -106,7 +160,7 @@ impl GhClient {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
             let error_msg = if stderr.is_empty() { stdout.to_string() } else { stderr.to_string() };
-            return Err(Error::GhCli(error_msg.trim().to_string()));
+            return Err(classify_gh_error(&error_msg, account, args));
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
@@ -210,6 +264,75 @@ mod tests {
             let version = client.version().await;
             assert!(version.is_ok());
             assert!(version.unwrap().contains("gh version"));
+        }
+    }
+
+    #[test]
+    fn test_extract_rate_limit_reset_with_timestamp() {
+        let msg = "HTTP 403: API rate limit exceeded - timestamp 2026-03-10 03:06:38 UTC";
+        assert_eq!(extract_rate_limit_reset(msg), "2026-03-10 03:06:38 UTC");
+    }
+
+    #[test]
+    fn test_extract_rate_limit_reset_without_timestamp() {
+        let msg = "HTTP 403: API rate limit exceeded";
+        assert_eq!(extract_rate_limit_reset(msg), "unknown");
+    }
+
+    #[test]
+    fn test_classify_gh_error_rate_limit() {
+        let msg = "HTTP 403: API rate limit exceeded - timestamp 2026-03-10 03:06:38 UTC";
+        let err = classify_gh_error(msg, Some("home"), &["api", "user"]);
+        match err {
+            Error::RateLimit { account, reset_at } => {
+                assert_eq!(account, "home");
+                assert_eq!(reset_at, "2026-03-10 03:06:38 UTC");
+            }
+            other => panic!("Expected RateLimit, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_classify_gh_error_secondary_rate_limit() {
+        let msg = "You have exceeded a secondary rate limit";
+        let err = classify_gh_error(msg, Some("work"), &["pr", "list"]);
+        assert!(matches!(err, Error::RateLimit { .. }));
+    }
+
+    #[test]
+    fn test_classify_gh_error_missing_scope() {
+        let msg = "HTTP 403: missing_scope - requires 'repo' scope";
+        let err = classify_gh_error(msg, Some("home"), &["repo", "create", "test"]);
+        match err {
+            Error::GhCli(msg) => {
+                assert!(msg.contains("Missing OAuth scope"));
+                assert!(msg.contains("home"));
+                assert!(msg.contains("repo create test"));
+            }
+            other => panic!("Expected GhCli with scope info, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_classify_gh_error_insufficient_scope() {
+        let msg = "insufficient_scope error";
+        let err = classify_gh_error(msg, None, &["api", "user"]);
+        match err {
+            Error::GhCli(msg) => {
+                assert!(msg.contains("Missing OAuth scope"));
+                assert!(msg.contains("default"));
+            }
+            other => panic!("Expected GhCli with scope info, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_classify_gh_error_generic() {
+        let msg = "  repository not found  ";
+        let err = classify_gh_error(msg, Some("home"), &["repo", "view"]);
+        match err {
+            Error::GhCli(msg) => assert_eq!(msg, "repository not found"),
+            other => panic!("Expected GhCli, got: {other}"),
         }
     }
 }

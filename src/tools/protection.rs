@@ -1,5 +1,6 @@
 //! Branch protection tool request types
 
+use crate::serde::flexible_u64_opt;
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,7 +42,8 @@ pub struct RequiredStatusChecks {
 pub struct RequiredPullRequestReviews {
     /// Number of required approving reviews
     #[schemars(description = "Number of required approving reviews")]
-    pub required_approving_review_count: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub required_approving_review_count: Option<u64>,
 
     /// Dismiss stale reviews when new commits are pushed
     #[schemars(description = "Dismiss stale reviews when new commits are pushed")]

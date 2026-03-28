@@ -1,5 +1,6 @@
 //! Code and content tool request types
 
+use crate::serde::flexible_u64_opt;
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -41,7 +42,8 @@ pub struct SearchCodeRequest {
 
     /// Maximum number of results
     #[schemars(description = "Maximum number of results (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 /// Request parameters for list_commits tool
@@ -73,7 +75,8 @@ pub struct ListCommitsRequest {
 
     /// Maximum number of commits to return
     #[schemars(description = "Maximum number of commits to return (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 #[cfg(test)]

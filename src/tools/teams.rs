@@ -1,5 +1,6 @@
 //! Teams and collaborator tool request types
 
+use crate::serde::flexible_u64_opt;
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -81,7 +82,8 @@ pub struct ListTeamsRequest {
 
     /// Maximum number of teams to return
     #[schemars(description = "Maximum number of teams to return (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 /// Request parameters for get_team_members tool

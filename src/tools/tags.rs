@@ -1,5 +1,6 @@
 //! Tag tool request types
 
+use crate::serde::flexible_u64_opt;
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -21,7 +22,8 @@ pub struct ListTagsRequest {
 
     /// Maximum number of tags to return
     #[schemars(description = "Maximum number of tags to return (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 /// Request parameters for create_tag tool

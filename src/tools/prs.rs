@@ -1,5 +1,6 @@
 //! Pull request tool request types
 
+use crate::serde::{flexible_u64, flexible_u64_opt};
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -21,6 +22,7 @@ pub struct GetPrRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 }
 
@@ -41,6 +43,7 @@ pub struct GetPrDiffRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 }
 
@@ -61,6 +64,7 @@ pub struct GetPrFilesRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 }
 
@@ -85,7 +89,8 @@ pub struct ListPrsRequest {
 
     /// Maximum number of PRs to return
     #[schemars(description = "Maximum number of PRs to return (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 
     /// Filter by base branch
     #[schemars(description = "Filter by base branch")]
@@ -109,7 +114,8 @@ pub struct SearchPrsRequest {
 
     /// Maximum number of results
     #[schemars(description = "Maximum number of results (default: 30)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 /// Request parameters for create_pr tool
@@ -165,6 +171,7 @@ pub struct EditPrRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 
     /// New title
@@ -197,6 +204,7 @@ pub struct MergePrRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 
     /// Merge method: merge, squash, rebase
@@ -229,6 +237,7 @@ pub struct ClosePrRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 }
 
@@ -249,6 +258,7 @@ pub struct CommentPrRequest {
 
     /// Pull request number
     #[schemars(description = "Pull request number")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub number: u64,
 
     /// Comment body
@@ -265,6 +275,20 @@ mod tests {
         let json = r#"{"owner": "scottidler", "repo": "gx", "number": 42}"#;
         let request: GetPrRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.number, 42);
+    }
+
+    #[test]
+    fn test_get_pr_request_string_number() {
+        let json = r#"{"owner": "scottidler", "repo": "gx", "number": "42"}"#;
+        let request: GetPrRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.number, 42);
+    }
+
+    #[test]
+    fn test_list_prs_request_string_limit() {
+        let json = r#"{"owner": "scottidler", "repo": "gx", "limit": "10"}"#;
+        let request: ListPrsRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.limit, Some(10));
     }
 
     #[test]

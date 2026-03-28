@@ -1,5 +1,6 @@
 //! Workflow and artifact tool request types
 
+use crate::serde::{flexible_u64, flexible_u64_opt};
 use rmcp::schemars;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -33,7 +34,8 @@ pub struct ListWorkflowRunsRequest {
 
     /// Maximum number of runs to return
     #[schemars(description = "Maximum number of runs to return (default: 20)")]
-    pub limit: Option<u32>,
+    #[serde(default, deserialize_with = "flexible_u64_opt")]
+    pub limit: Option<u64>,
 }
 
 /// Request parameters for list_run_artifacts tool
@@ -53,6 +55,7 @@ pub struct ListRunArtifactsRequest {
 
     /// Workflow run ID
     #[schemars(description = "Workflow run ID")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub run_id: u64,
 }
 
@@ -73,6 +76,7 @@ pub struct DownloadRunArtifactRequest {
 
     /// Workflow run ID
     #[schemars(description = "Workflow run ID")]
+    #[serde(deserialize_with = "flexible_u64")]
     pub run_id: u64,
 
     /// Artifact name pattern to download
