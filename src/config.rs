@@ -22,6 +22,34 @@ fn default_log_level() -> String {
     "info".to_string()
 }
 
+/// Rate limiting configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct RateLimitConfig {
+    #[serde(default = "default_requests_per_minute")]
+    pub requests_per_minute: u32,
+
+    #[serde(default = "default_search_requests_per_minute")]
+    pub search_requests_per_minute: u32,
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            requests_per_minute: default_requests_per_minute(),
+            search_requests_per_minute: default_search_requests_per_minute(),
+        }
+    }
+}
+
+fn default_requests_per_minute() -> u32 {
+    80
+}
+
+fn default_search_requests_per_minute() -> u32 {
+    25
+}
+
 /// Main configuration
 /// Simple format: accounts map directly to token file paths
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -36,6 +64,10 @@ pub struct Config {
     /// Logging configuration
     #[serde(default)]
     pub logging: LogConfig,
+
+    /// Rate limiting configuration
+    #[serde(default, rename = "rate-limit")]
+    pub rate_limit: RateLimitConfig,
 }
 
 fn default_account() -> String {
@@ -48,6 +80,7 @@ impl Default for Config {
             default_account: "default".to_string(),
             accounts: HashMap::new(),
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         }
     }
 }
@@ -196,6 +229,7 @@ accounts:
             default_account: "home".to_string(),
             accounts,
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         };
         let source = config.get_token_source(None).unwrap();
         assert_eq!(source, "/path/to/token");
@@ -260,6 +294,7 @@ accounts:
             default_account: "test".to_string(),
             accounts,
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         };
 
         temp_env::with_var("TEST_GH_TOKEN_ABC", Some("ghp_env_token_12345"), || {
@@ -276,6 +311,7 @@ accounts:
             default_account: "test".to_string(),
             accounts,
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         };
 
         temp_env::with_var_unset("TEST_GH_MISSING_VAR", || {
@@ -292,6 +328,7 @@ accounts:
             default_account: "test".to_string(),
             accounts,
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         };
 
         temp_env::with_var("TEST_GH_EMPTY_VAR", Some(""), || {
@@ -308,6 +345,7 @@ accounts:
             default_account: "test".to_string(),
             accounts,
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         };
 
         temp_env::with_var("TEST_GH_TRIM_VAR", Some("  ghp_trimmed  \n"), || {
@@ -328,9 +366,70 @@ accounts:
             default_account: "file_account".to_string(),
             accounts,
             logging: LogConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         };
 
         let token = config.get_token(Some("file_account")).unwrap();
         assert_eq!(token, "ghp_file_token");
+    }
+
+    #[test]
+    fn test_rate_limit_defaults() {
+        let config = Config::default();
+        assert_eq!(config.rate_limit.requests_per_minute, 80);
+        assert_eq!(config.rate_limit.search_requests_per_minute, 25);
+    }
+
+    #[test]
+    fn test_rate_limit_from_yaml() {
+        let yaml = r#"
+default-account: home
+accounts:
+  home: /tmp/token
+rate-limit:
+  requests-per-minute: 60
+  search-requests-per-minute: 10
+"#;
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(yaml.as_bytes()).unwrap();
+
+        let config = Config::load_from_file(file.path()).unwrap();
+        assert_eq!(config.rate_limit.requests_per_minute, 60);
+        assert_eq!(config.rate_limit.search_requests_per_minute, 10);
+    }
+
+    #[test]
+    fn test_rate_limit_missing_section_uses_defaults() {
+        let yaml = r#"
+default-account: home
+accounts:
+  home: /tmp/token
+"#;
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(yaml.as_bytes()).unwrap();
+
+        let config = Config::load_from_file(file.path()).unwrap();
+        assert_eq!(config.rate_limit.requests_per_minute, 80);
+        assert_eq!(config.rate_limit.search_requests_per_minute, 25);
+    }
+
+    #[test]
+    fn test_rate_limit_partial_uses_defaults_for_missing() {
+        let yaml = r#"
+default-account: home
+accounts:
+  home: /tmp/token
+rate-limit:
+  requests-per-minute: 50
+"#;
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(yaml.as_bytes()).unwrap();
+
+        let config = Config::load_from_file(file.path()).unwrap();
+        assert_eq!(config.rate_limit.requests_per_minute, 50);
+        assert_eq!(config.rate_limit.search_requests_per_minute, 25);
     }
 }
