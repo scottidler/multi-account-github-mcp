@@ -28,7 +28,7 @@ fn check_required_tools() -> String {
 #[command(
     name = "multi-account-github-mcp",
     about = "GitHub MCP server with multi-account support",
-    version = env!("GIT_DESCRIBE"),
+    version = env!("BUILD_VERSION"),
     after_help = check_required_tools(),
 )]
 pub struct Cli {
