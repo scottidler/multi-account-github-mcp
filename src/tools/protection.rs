@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetBranchProtectionRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner
@@ -60,9 +58,7 @@ pub struct RequiredPullRequestReviews {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SetBranchProtectionRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner
@@ -114,9 +110,7 @@ pub struct SetBranchProtectionRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeleteBranchProtectionRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner

@@ -27,10 +27,7 @@ fn setup_logging(verbose: bool, log_config: &LogConfig) -> Result<()> {
             std::fs::create_dir_all(parent)?;
         }
 
-        let file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        let file = std::fs::OpenOptions::new().create(true).append(true).open(&path)?;
 
         tracing_subscriber::fmt()
             .with_env_filter(filter)
@@ -123,10 +120,7 @@ async fn run_test(config: Config, account: Option<String>) -> Result<()> {
     // Test authentication
     print!("Testing authentication... ");
     io::stdout().flush()?;
-    match gh
-        .run(account.as_deref(), &["api", "user", "--jq", ".login"])
-        .await
-    {
+    match gh.run(account.as_deref(), &["api", "user", "--jq", ".login"]).await {
         Ok(login) => {
             let login = login.as_str().unwrap_or("unknown").trim_matches('"');
             println!("✅ Authenticated as: {login}");

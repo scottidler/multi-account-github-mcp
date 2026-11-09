@@ -8,9 +8,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetMeRequest {
     /// The account to use (e.g., "home", "work"). Uses default account if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 }
 

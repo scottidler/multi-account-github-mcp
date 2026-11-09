@@ -115,18 +115,12 @@ impl Config {
         // Try primary location: ~/.config/<project>/<project>.yml
         if let Some(config_dir) = xdg_config_dir() {
             let project_name = env!("CARGO_PKG_NAME");
-            let primary_config = config_dir
-                .join(project_name)
-                .join(format!("{project_name}.yml"));
+            let primary_config = config_dir.join(project_name).join(format!("{project_name}.yml"));
             if primary_config.exists() {
                 match Self::load_from_file(&primary_config) {
                     Ok(config) => return Ok(config),
                     Err(e) => {
-                        tracing::warn!(
-                            "Failed to load config from {}: {}",
-                            primary_config.display(),
-                            e
-                        );
+                        tracing::warn!("Failed to load config from {}: {}", primary_config.display(), e);
                     }
                 }
             }
@@ -139,11 +133,7 @@ impl Config {
             match Self::load_from_file(&fallback_config) {
                 Ok(config) => return Ok(config),
                 Err(e) => {
-                    tracing::warn!(
-                        "Failed to load config from {}: {}",
-                        fallback_config.display(),
-                        e
-                    );
+                    tracing::warn!("Failed to load config from {}: {}", fallback_config.display(), e);
                 }
             }
         }
@@ -154,13 +144,8 @@ impl Config {
     }
 
     fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content = fs::read_to_string(&path).map_err(|e| {
-            Error::Config(format!(
-                "Failed to read config file {}: {}",
-                path.as_ref().display(),
-                e
-            ))
-        })?;
+        let content = fs::read_to_string(&path)
+            .map_err(|e| Error::Config(format!("Failed to read config file {}: {}", path.as_ref().display(), e)))?;
 
         let config: Self = serde_yaml::from_str(&content)?;
 
@@ -208,10 +193,7 @@ impl Config {
             .to_string();
 
         if token.is_empty() {
-            return Err(Error::TokenRead(format!(
-                "Token file is empty: {}",
-                path.display()
-            )));
+            return Err(Error::TokenRead(format!("Token file is empty: {}", path.display())));
         }
 
         Ok(token)
@@ -301,9 +283,7 @@ accounts:
     #[test]
     fn test_token_trimmed() {
         let mut token_file = NamedTempFile::new().unwrap();
-        token_file
-            .write_all(b"  ghp_token_with_whitespace  \n")
-            .unwrap();
+        token_file.write_all(b"  ghp_token_with_whitespace  \n").unwrap();
 
         let yaml = format!(
             r#"
@@ -397,10 +377,7 @@ accounts:
         token_file.write_all(b"ghp_file_token").unwrap();
 
         let mut accounts = HashMap::new();
-        accounts.insert(
-            "file_account".to_string(),
-            token_file.path().display().to_string(),
-        );
+        accounts.insert("file_account".to_string(), token_file.path().display().to_string());
         let config = Config {
             default_account: "file_account".to_string(),
             accounts,

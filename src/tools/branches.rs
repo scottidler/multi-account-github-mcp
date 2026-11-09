@@ -8,9 +8,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListBranchesRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner
@@ -26,9 +24,7 @@ pub struct ListBranchesRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateBranchRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner
@@ -44,9 +40,7 @@ pub struct CreateBranchRequest {
     pub branch: String,
 
     /// Source branch or commit SHA to branch from (default: default branch)
-    #[schemars(
-        description = "Source branch or commit SHA to branch from (default: default branch)"
-    )]
+    #[schemars(description = "Source branch or commit SHA to branch from (default: default branch)")]
     pub from: Option<String>,
 }
 
@@ -54,9 +48,7 @@ pub struct CreateBranchRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeleteBranchRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner

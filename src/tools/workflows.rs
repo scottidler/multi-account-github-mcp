@@ -9,9 +9,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListWorkflowRunsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner
@@ -44,9 +42,7 @@ pub struct ListWorkflowRunsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListRunArtifactsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner
@@ -67,9 +63,7 @@ pub struct ListRunArtifactsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DownloadRunArtifactRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(
-        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
-    )]
+    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
     pub account: Option<String>,
 
     /// Repository owner

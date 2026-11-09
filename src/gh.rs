@@ -103,11 +103,7 @@ impl GhClient {
 
     fn get_limiter(&self, account: Option<&str>, is_search: bool) -> Arc<Limiter> {
         let key = account.unwrap_or(&self.config.default_account).to_string();
-        let map = if is_search {
-            &self.search_limiters
-        } else {
-            &self.general_limiters
-        };
+        let map = if is_search { &self.search_limiters } else { &self.general_limiters };
         let rpm = if is_search {
             self.config.rate_limit.search_requests_per_minute
         } else {
@@ -174,11 +170,7 @@ impl GhClient {
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let error_msg = if stderr.is_empty() {
-                stdout.to_string()
-            } else {
-                stderr.to_string()
-            };
+            let error_msg = if stderr.is_empty() { stdout.to_string() } else { stderr.to_string() };
             return Err(classify_gh_error(&error_msg, account, args));
         }
 
@@ -190,11 +182,8 @@ impl GhClient {
         }
 
         // Parse JSON output
-        let json: Value = serde_json::from_str(&stdout).map_err(|e| {
-            Error::GhCli(format!(
-                "Failed to parse gh output as JSON: {e}\nOutput: {stdout}"
-            ))
-        })?;
+        let json: Value = serde_json::from_str(&stdout)
+            .map_err(|e| Error::GhCli(format!("Failed to parse gh output as JSON: {e}\nOutput: {stdout}")))?;
 
         Ok(json)
     }
@@ -250,11 +239,7 @@ impl GhClient {
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let error_msg = if stderr.is_empty() {
-                stdout.to_string()
-            } else {
-                stderr.to_string()
-            };
+            let error_msg = if stderr.is_empty() { stdout.to_string() } else { stderr.to_string() };
             return Err(classify_gh_error(&error_msg, account, args));
         }
 
@@ -285,11 +270,7 @@ impl GhClient {
         args.push(endpoint);
 
         // Build field arguments
-        let field_args: Vec<String> = fields
-            .unwrap_or(&[])
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect();
+        let field_args: Vec<String> = fields.unwrap_or(&[]).iter().map(|(k, v)| format!("{k}={v}")).collect();
 
         let field_refs: Vec<&str> = field_args.iter().flat_map(|f| ["-f", f.as_str()]).collect();
 
