@@ -9,7 +9,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListTagsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -30,7 +32,9 @@ pub struct ListTagsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateTagRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -58,7 +62,9 @@ pub struct CreateTagRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeleteTagRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner

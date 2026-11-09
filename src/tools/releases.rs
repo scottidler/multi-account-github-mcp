@@ -9,7 +9,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListReleasesRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -30,7 +32,9 @@ pub struct ListReleasesRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetReleaseRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -50,7 +54,9 @@ pub struct GetReleaseRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateReleaseRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -94,7 +100,9 @@ pub struct CreateReleaseRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeleteReleaseRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -118,7 +126,9 @@ pub struct DeleteReleaseRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListReleaseAssetsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -138,7 +148,9 @@ pub struct ListReleaseAssetsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DownloadReleaseAssetRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -175,8 +187,7 @@ mod tests {
 
     #[test]
     fn test_create_release_request() {
-        let json =
-            r#"{"owner": "scottidler", "repo": "gx", "tag": "v1.0.0", "title": "Release 1.0", "prerelease": false}"#;
+        let json = r#"{"owner": "scottidler", "repo": "gx", "tag": "v1.0.0", "title": "Release 1.0", "prerelease": false}"#;
         let request: CreateReleaseRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.tag, "v1.0.0");
         assert_eq!(request.prerelease, Some(false));

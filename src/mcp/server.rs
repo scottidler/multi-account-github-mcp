@@ -4,22 +4,28 @@ use crate::GhClient;
 use crate::tools::account::GetMeRequest;
 use crate::tools::branches::{CreateBranchRequest, DeleteBranchRequest, ListBranchesRequest};
 use crate::tools::code::{GetFileRequest, ListCommitsRequest, SearchCodeRequest};
-use crate::tools::protection::{DeleteBranchProtectionRequest, GetBranchProtectionRequest, SetBranchProtectionRequest};
+use crate::tools::protection::{
+    DeleteBranchProtectionRequest, GetBranchProtectionRequest, SetBranchProtectionRequest,
+};
 use crate::tools::prs::{
-    ClosePrRequest, CommentPrRequest, CreatePrRequest, EditPrRequest, GetPrDiffRequest, GetPrFilesRequest,
-    GetPrRequest, ListPrsRequest, MergePrRequest, SearchPrsRequest,
+    ClosePrRequest, CommentPrRequest, CreatePrRequest, EditPrRequest, GetPrDiffRequest,
+    GetPrFilesRequest, GetPrRequest, ListPrsRequest, MergePrRequest, SearchPrsRequest,
 };
 use crate::tools::releases::{
     CreateReleaseRequest, DeleteReleaseRequest, DownloadReleaseAssetRequest, GetReleaseRequest,
     ListReleaseAssetsRequest, ListReleasesRequest,
 };
-use crate::tools::repos::{ArchiveRepoRequest, CreateRepoRequest, GetRepoRequest, ListReposRequest};
+use crate::tools::repos::{
+    ArchiveRepoRequest, CreateRepoRequest, GetRepoRequest, ListReposRequest,
+};
 use crate::tools::tags::{CreateTagRequest, DeleteTagRequest, ListTagsRequest};
 use crate::tools::teams::{
     AddCollaboratorRequest, GetTeamMembersRequest, ListCollaboratorsRequest, ListTeamsRequest,
     RemoveCollaboratorRequest,
 };
-use crate::tools::workflows::{DownloadRunArtifactRequest, ListRunArtifactsRequest, ListWorkflowRunsRequest};
+use crate::tools::workflows::{
+    DownloadRunArtifactRequest, ListRunArtifactsRequest, ListWorkflowRunsRequest,
+};
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, Content, ServerCapabilities, ServerInfo};
@@ -39,7 +45,10 @@ impl GitHubMcpServer {
     pub fn new(gh: GhClient) -> Self {
         info!("Creating GitHubMcpServer");
         let tool_router = Self::tool_router();
-        debug!("Tool router created with {} tools", tool_router.list_all().len());
+        debug!(
+            "Tool router created with {} tools",
+            tool_router.list_all().len()
+        );
         for tool in tool_router.list_all() {
             debug!("  - Registered tool: {}", tool.name);
         }
@@ -76,8 +85,13 @@ impl GitHubMcpServer {
     // ============================================
 
     /// Create a new GitHub repository
-    #[tool(description = "Create a new GitHub repository. Can create personal or organization repos.")]
-    async fn create_repo(&self, params: Parameters<CreateRepoRequest>) -> Result<CallToolResult, McpError> {
+    #[tool(
+        description = "Create a new GitHub repository. Can create personal or organization repos."
+    )]
+    async fn create_repo(
+        &self,
+        params: Parameters<CreateRepoRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut args = vec!["repo", "create", &params.0.name];
 
         let description;
@@ -103,8 +117,13 @@ impl GitHubMcpServer {
     }
 
     /// List repositories for a user or organization
-    #[tool(description = "List repositories for a user or organization. Defaults to authenticated user's repos.")]
-    async fn list_repos(&self, params: Parameters<ListReposRequest>) -> Result<CallToolResult, McpError> {
+    #[tool(
+        description = "List repositories for a user or organization. Defaults to authenticated user's repos."
+    )]
+    async fn list_repos(
+        &self,
+        params: Parameters<ListReposRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut args = vec!["repo", "list"];
 
         if let Some(ref owner) = params.0.owner {
@@ -131,7 +150,10 @@ impl GitHubMcpServer {
 
     /// Get details about a specific repository
     #[tool(description = "Get detailed information about a specific repository.")]
-    async fn get_repo(&self, params: Parameters<GetRepoRequest>) -> Result<CallToolResult, McpError> {
+    async fn get_repo(
+        &self,
+        params: Parameters<GetRepoRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let args = vec![
             "repo",
@@ -152,7 +174,10 @@ impl GitHubMcpServer {
     #[tool(
         description = "Archive a repository. This is a safer alternative to deletion - the repo becomes read-only but can be unarchived."
     )]
-    async fn archive_repo(&self, params: Parameters<ArchiveRepoRequest>) -> Result<CallToolResult, McpError> {
+    async fn archive_repo(
+        &self,
+        params: Parameters<ArchiveRepoRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let endpoint = format!("repos/{}/{}", params.0.owner, params.0.repo);
         let result = self
             .gh
@@ -173,7 +198,10 @@ impl GitHubMcpServer {
 
     /// List branches in a repository
     #[tool(description = "List all branches in a repository.")]
-    async fn list_branches(&self, params: Parameters<ListBranchesRequest>) -> Result<CallToolResult, McpError> {
+    async fn list_branches(
+        &self,
+        params: Parameters<ListBranchesRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let endpoint = format!("repos/{}/{}/branches", params.0.owner, params.0.repo);
         let result = self
             .gh
@@ -187,10 +215,16 @@ impl GitHubMcpServer {
     #[tool(
         description = "Create a new branch in a repository. Optionally specify a source branch/commit to branch from."
     )]
-    async fn create_branch(&self, params: Parameters<CreateBranchRequest>) -> Result<CallToolResult, McpError> {
+    async fn create_branch(
+        &self,
+        params: Parameters<CreateBranchRequest>,
+    ) -> Result<CallToolResult, McpError> {
         // First, get the SHA of the source (default branch or specified)
         let source = params.0.from.as_deref().unwrap_or("HEAD");
-        let sha_endpoint = format!("repos/{}/{}/git/ref/heads/{}", params.0.owner, params.0.repo, source);
+        let sha_endpoint = format!(
+            "repos/{}/{}/git/ref/heads/{}",
+            params.0.owner, params.0.repo, source
+        );
 
         // Try to get SHA from branch ref, fall back to commit SHA if it's a SHA
         let sha = match self
@@ -198,7 +232,10 @@ impl GitHubMcpServer {
             .api(params.0.account.as_deref(), &sha_endpoint, None, None)
             .await
         {
-            Ok(result) => result["object"]["sha"].as_str().unwrap_or(source).to_string(),
+            Ok(result) => result["object"]["sha"]
+                .as_str()
+                .unwrap_or(source)
+                .to_string(),
             Err(_) => source.to_string(), // Assume it's a SHA
         };
 
@@ -209,7 +246,9 @@ impl GitHubMcpServer {
         let sha_arg = format!("sha={sha}");
 
         // Use raw API call with JSON body
-        let args = vec!["api", "-X", "POST", &endpoint, "-f", &ref_arg, "-f", &sha_arg];
+        let args = vec![
+            "api", "-X", "POST", &endpoint, "-f", &ref_arg, "-f", &sha_arg,
+        ];
         let result = self
             .gh
             .run(params.0.account.as_deref(), &args)
@@ -220,7 +259,10 @@ impl GitHubMcpServer {
 
     /// Delete a branch from a repository
     #[tool(description = "Delete a branch from a repository. Cannot delete the default branch.")]
-    async fn delete_branch(&self, params: Parameters<DeleteBranchRequest>) -> Result<CallToolResult, McpError> {
+    async fn delete_branch(
+        &self,
+        params: Parameters<DeleteBranchRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let endpoint = format!(
             "repos/{}/{}/git/refs/heads/{}",
             params.0.owner, params.0.repo, params.0.branch
@@ -311,7 +353,10 @@ impl GitHubMcpServer {
         // For simplified implementation, use -f flags for the basic case
         // Full JSON body handling would require stdin piping
         let _body_str = serde_json::to_string(&body).map_err(Self::err)?;
-        let enforce_admins_arg = format!("enforce_admins={}", params.0.enforce_admins.unwrap_or(false));
+        let enforce_admins_arg = format!(
+            "enforce_admins={}",
+            params.0.enforce_admins.unwrap_or(false)
+        );
 
         let result = self
             .gh
@@ -386,7 +431,10 @@ impl GitHubMcpServer {
 
     /// Get the diff of a pull request
     #[tool(description = "Get the diff/patch of a pull request.")]
-    async fn get_pr_diff(&self, params: Parameters<GetPrDiffRequest>) -> Result<CallToolResult, McpError> {
+    async fn get_pr_diff(
+        &self,
+        params: Parameters<GetPrDiffRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let number_str = params.0.number.to_string();
         let args = vec!["pr", "diff", &number_str, "--repo", &repo];
@@ -400,10 +448,21 @@ impl GitHubMcpServer {
 
     /// Get files changed in a pull request
     #[tool(description = "Get the list of files changed in a pull request.")]
-    async fn get_pr_files(&self, params: Parameters<GetPrFilesRequest>) -> Result<CallToolResult, McpError> {
+    async fn get_pr_files(
+        &self,
+        params: Parameters<GetPrFilesRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let number_str = params.0.number.to_string();
-        let args = vec!["pr", "view", &number_str, "--repo", &repo, "--json", "files"];
+        let args = vec![
+            "pr",
+            "view",
+            &number_str,
+            "--repo",
+            &repo,
+            "--json",
+            "files",
+        ];
         let result = self
             .gh
             .run(params.0.account.as_deref(), &args)
@@ -414,7 +473,10 @@ impl GitHubMcpServer {
 
     /// List pull requests in a repository
     #[tool(description = "List pull requests in a repository with optional filters.")]
-    async fn list_prs(&self, params: Parameters<ListPrsRequest>) -> Result<CallToolResult, McpError> {
+    async fn list_prs(
+        &self,
+        params: Parameters<ListPrsRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let mut args = vec!["pr", "list", "--repo", &repo];
 
@@ -456,7 +518,10 @@ impl GitHubMcpServer {
 
     /// Search pull requests
     #[tool(description = "Search pull requests using GitHub search syntax.")]
-    async fn search_prs(&self, params: Parameters<SearchPrsRequest>) -> Result<CallToolResult, McpError> {
+    async fn search_prs(
+        &self,
+        params: Parameters<SearchPrsRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut args = vec!["search", "prs", &params.0.query];
 
         let limit_str;
@@ -479,7 +544,10 @@ impl GitHubMcpServer {
 
     /// Create a new pull request
     #[tool(description = "Create a new pull request.")]
-    async fn create_pr(&self, params: Parameters<CreatePrRequest>) -> Result<CallToolResult, McpError> {
+    async fn create_pr(
+        &self,
+        params: Parameters<CreatePrRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let mut args = vec![
             "pr",
@@ -551,7 +619,10 @@ impl GitHubMcpServer {
 
     /// Merge a pull request
     #[tool(description = "Merge a pull request. Supports merge, squash, and rebase methods.")]
-    async fn merge_pr(&self, params: Parameters<MergePrRequest>) -> Result<CallToolResult, McpError> {
+    async fn merge_pr(
+        &self,
+        params: Parameters<MergePrRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let number_str = params.0.number.to_string();
         let mut args = vec!["pr", "merge", &number_str, "--repo", &repo];
@@ -582,7 +653,10 @@ impl GitHubMcpServer {
 
     /// Close a pull request without merging
     #[tool(description = "Close a pull request without merging.")]
-    async fn close_pr(&self, params: Parameters<ClosePrRequest>) -> Result<CallToolResult, McpError> {
+    async fn close_pr(
+        &self,
+        params: Parameters<ClosePrRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let number_str = params.0.number.to_string();
         let args = vec!["pr", "close", &number_str, "--repo", &repo];
@@ -596,10 +670,21 @@ impl GitHubMcpServer {
 
     /// Add a comment to a pull request
     #[tool(description = "Add a comment to a pull request.")]
-    async fn comment_pr(&self, params: Parameters<CommentPrRequest>) -> Result<CallToolResult, McpError> {
+    async fn comment_pr(
+        &self,
+        params: Parameters<CommentPrRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let number_str = params.0.number.to_string();
-        let args = vec!["pr", "comment", &number_str, "--repo", &repo, "--body", &params.0.body];
+        let args = vec![
+            "pr",
+            "comment",
+            &number_str,
+            "--repo",
+            &repo,
+            "--body",
+            &params.0.body,
+        ];
         let result = self
             .gh
             .run_raw(params.0.account.as_deref(), &args)
@@ -614,8 +699,14 @@ impl GitHubMcpServer {
 
     /// Get contents of a file from a repository
     #[tool(description = "Get the contents of a file from a repository.")]
-    async fn get_file(&self, params: Parameters<GetFileRequest>) -> Result<CallToolResult, McpError> {
-        let mut endpoint = format!("repos/{}/{}/contents/{}", params.0.owner, params.0.repo, params.0.path);
+    async fn get_file(
+        &self,
+        params: Parameters<GetFileRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut endpoint = format!(
+            "repos/{}/{}/contents/{}",
+            params.0.owner, params.0.repo, params.0.path
+        );
 
         if let Some(ref r) = params.0.r#ref {
             endpoint.push_str(&format!("?ref={r}"));
@@ -630,7 +721,8 @@ impl GitHubMcpServer {
         // If content is base64 encoded, decode it
         if let Some(content) = result["content"].as_str() {
             let decoded = content.replace('\n', "");
-            if let Ok(bytes) = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &decoded)
+            if let Ok(bytes) =
+                base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &decoded)
                 && let Ok(text) = String::from_utf8(bytes)
             {
                 return Ok(CallToolResult::success(vec![Content::text(text)]));
@@ -642,7 +734,10 @@ impl GitHubMcpServer {
 
     /// Search code across repositories
     #[tool(description = "Search code using GitHub code search syntax.")]
-    async fn search_code(&self, params: Parameters<SearchCodeRequest>) -> Result<CallToolResult, McpError> {
+    async fn search_code(
+        &self,
+        params: Parameters<SearchCodeRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut args = vec!["search", "code", &params.0.query];
 
         let limit_str;
@@ -665,7 +760,10 @@ impl GitHubMcpServer {
 
     /// List commits in a repository
     #[tool(description = "List commits in a repository with optional filters.")]
-    async fn list_commits(&self, params: Parameters<ListCommitsRequest>) -> Result<CallToolResult, McpError> {
+    async fn list_commits(
+        &self,
+        params: Parameters<ListCommitsRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut endpoint = format!("repos/{}/{}/commits", params.0.owner, params.0.repo);
         let mut query_params = Vec::new();
 
@@ -704,7 +802,10 @@ impl GitHubMcpServer {
 
     /// List releases in a repository
     #[tool(description = "List releases in a repository.")]
-    async fn list_releases(&self, params: Parameters<ListReleasesRequest>) -> Result<CallToolResult, McpError> {
+    async fn list_releases(
+        &self,
+        params: Parameters<ListReleasesRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let mut args = vec!["release", "list", "--repo", &repo];
 
@@ -728,7 +829,10 @@ impl GitHubMcpServer {
 
     /// Get details about a specific release
     #[tool(description = "Get detailed information about a specific release by tag.")]
-    async fn get_release(&self, params: Parameters<GetReleaseRequest>) -> Result<CallToolResult, McpError> {
+    async fn get_release(
+        &self,
+        params: Parameters<GetReleaseRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let args = vec![
             "release",
@@ -749,7 +853,10 @@ impl GitHubMcpServer {
 
     /// Create a new release
     #[tool(description = "Create a new release with optional release notes.")]
-    async fn create_release(&self, params: Parameters<CreateReleaseRequest>) -> Result<CallToolResult, McpError> {
+    async fn create_release(
+        &self,
+        params: Parameters<CreateReleaseRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let mut args = vec!["release", "create", &params.0.tag, "--repo", &repo];
 
@@ -793,7 +900,10 @@ impl GitHubMcpServer {
 
     /// Delete a release
     #[tool(description = "Delete a release by tag. Optionally delete the associated git tag.")]
-    async fn delete_release(&self, params: Parameters<DeleteReleaseRequest>) -> Result<CallToolResult, McpError> {
+    async fn delete_release(
+        &self,
+        params: Parameters<DeleteReleaseRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
         let mut args = vec!["release", "delete", &params.0.tag, "--repo", &repo, "--yes"];
 
@@ -816,7 +926,15 @@ impl GitHubMcpServer {
         params: Parameters<ListReleaseAssetsRequest>,
     ) -> Result<CallToolResult, McpError> {
         let repo = format!("{}/{}", params.0.owner, params.0.repo);
-        let args = vec!["release", "view", &params.0.tag, "--repo", &repo, "--json", "assets"];
+        let args = vec![
+            "release",
+            "view",
+            &params.0.tag,
+            "--repo",
+            &repo,
+            "--json",
+            "assets",
+        ];
         let result = self
             .gh
             .run(params.0.account.as_deref(), &args)
@@ -860,7 +978,10 @@ impl GitHubMcpServer {
 
     /// List tags in a repository
     #[tool(description = "List git tags in a repository.")]
-    async fn list_tags(&self, params: Parameters<ListTagsRequest>) -> Result<CallToolResult, McpError> {
+    async fn list_tags(
+        &self,
+        params: Parameters<ListTagsRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut endpoint = format!("repos/{}/{}/tags", params.0.owner, params.0.repo);
         if let Some(limit) = params.0.limit {
             endpoint.push_str(&format!("?per_page={limit}"));
@@ -875,7 +996,10 @@ impl GitHubMcpServer {
 
     /// Create a new tag
     #[tool(description = "Create a new git tag pointing to a specific commit.")]
-    async fn create_tag(&self, params: Parameters<CreateTagRequest>) -> Result<CallToolResult, McpError> {
+    async fn create_tag(
+        &self,
+        params: Parameters<CreateTagRequest>,
+    ) -> Result<CallToolResult, McpError> {
         // Get the target SHA if not provided
         let sha = if let Some(ref s) = params.0.sha {
             s.clone()
@@ -907,7 +1031,9 @@ impl GitHubMcpServer {
         let ref_arg = format!("ref={ref_name}");
         let sha_arg = format!("sha={sha}");
 
-        let args = vec!["api", "-X", "POST", &endpoint, "-f", &ref_arg, "-f", &sha_arg];
+        let args = vec![
+            "api", "-X", "POST", &endpoint, "-f", &ref_arg, "-f", &sha_arg,
+        ];
         let result = self
             .gh
             .run(params.0.account.as_deref(), &args)
@@ -918,7 +1044,10 @@ impl GitHubMcpServer {
 
     /// Delete a tag
     #[tool(description = "Delete a git tag from a repository.")]
-    async fn delete_tag(&self, params: Parameters<DeleteTagRequest>) -> Result<CallToolResult, McpError> {
+    async fn delete_tag(
+        &self,
+        params: Parameters<DeleteTagRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let endpoint = format!(
             "repos/{}/{}/git/refs/tags/{}",
             params.0.owner, params.0.repo, params.0.tag
@@ -1056,7 +1185,10 @@ impl GitHubMcpServer {
 
     /// Add a collaborator to a repository
     #[tool(description = "Add a collaborator to a repository with specified permission level.")]
-    async fn add_collaborator(&self, params: Parameters<AddCollaboratorRequest>) -> Result<CallToolResult, McpError> {
+    async fn add_collaborator(
+        &self,
+        params: Parameters<AddCollaboratorRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let endpoint = format!(
             "repos/{}/{}/collaborators/{}",
             params.0.owner, params.0.repo, params.0.username
@@ -1097,7 +1229,10 @@ impl GitHubMcpServer {
 
     /// List teams in an organization
     #[tool(description = "List teams in an organization.")]
-    async fn list_teams(&self, params: Parameters<ListTeamsRequest>) -> Result<CallToolResult, McpError> {
+    async fn list_teams(
+        &self,
+        params: Parameters<ListTeamsRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut endpoint = format!("orgs/{}/teams", params.0.org);
         if let Some(limit) = params.0.limit {
             endpoint.push_str(&format!("?per_page={limit}"));
@@ -1112,7 +1247,10 @@ impl GitHubMcpServer {
 
     /// Get members of a team
     #[tool(description = "Get members of a team in an organization.")]
-    async fn get_team_members(&self, params: Parameters<GetTeamMembersRequest>) -> Result<CallToolResult, McpError> {
+    async fn get_team_members(
+        &self,
+        params: Parameters<GetTeamMembersRequest>,
+    ) -> Result<CallToolResult, McpError> {
         let mut endpoint = format!("orgs/{}/teams/{}/members", params.0.org, params.0.team);
 
         if let Some(ref role) = params.0.role {

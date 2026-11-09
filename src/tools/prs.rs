@@ -9,7 +9,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetPrRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -30,7 +32,9 @@ pub struct GetPrRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetPrDiffRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -51,7 +55,9 @@ pub struct GetPrDiffRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetPrFilesRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -72,7 +78,9 @@ pub struct GetPrFilesRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListPrsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -105,7 +113,9 @@ pub struct ListPrsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchPrsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Search query (GitHub search syntax)
@@ -122,7 +132,9 @@ pub struct SearchPrsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreatePrRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -158,7 +170,9 @@ pub struct CreatePrRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct EditPrRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -191,7 +205,9 @@ pub struct EditPrRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MergePrRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -224,7 +240,9 @@ pub struct MergePrRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ClosePrRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -245,7 +263,9 @@ pub struct ClosePrRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CommentPrRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner

@@ -9,7 +9,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateRepoRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Name of the repository
@@ -33,11 +35,15 @@ pub struct CreateRepoRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListReposRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Owner (user or org) to list repos for. Defaults to authenticated user.
-    #[schemars(description = "Owner (user or org) to list repos for. Defaults to authenticated user.")]
+    #[schemars(
+        description = "Owner (user or org) to list repos for. Defaults to authenticated user."
+    )]
     pub owner: Option<String>,
 
     /// Maximum number of repos to return
@@ -50,7 +56,9 @@ pub struct ListReposRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetRepoRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -66,7 +74,9 @@ pub struct GetRepoRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ArchiveRepoRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner

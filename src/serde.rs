@@ -36,7 +36,11 @@ where
     match opt {
         None => Ok(None),
         Some(StringOrU64::U64(v)) => Ok(Some(v)),
-        Some(StringOrU64::Str(s)) => s.trim().parse::<u64>().map(Some).map_err(serde::de::Error::custom),
+        Some(StringOrU64::Str(s)) => s
+            .trim()
+            .parse::<u64>()
+            .map(Some)
+            .map_err(serde::de::Error::custom),
     }
 }
 

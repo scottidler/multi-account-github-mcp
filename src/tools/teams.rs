@@ -9,7 +9,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListCollaboratorsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -29,7 +31,9 @@ pub struct ListCollaboratorsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AddCollaboratorRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -45,7 +49,9 @@ pub struct AddCollaboratorRequest {
     pub username: String,
 
     /// Permission level: pull, push, admin, maintain, triage
-    #[schemars(description = "Permission level: pull, push, admin, maintain, triage (default: push)")]
+    #[schemars(
+        description = "Permission level: pull, push, admin, maintain, triage (default: push)"
+    )]
     pub permission: Option<String>,
 }
 
@@ -53,7 +59,9 @@ pub struct AddCollaboratorRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RemoveCollaboratorRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Repository owner
@@ -73,7 +81,9 @@ pub struct RemoveCollaboratorRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListTeamsRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Organization name
@@ -90,7 +100,9 @@ pub struct ListTeamsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetTeamMembersRequest {
     /// The account to use (e.g., 'home', 'work'). Uses default if not specified.
-    #[schemars(description = "The account to use (e.g., 'home', 'work'). Uses default if not specified.")]
+    #[schemars(
+        description = "The account to use (e.g., 'home', 'work'). Uses default if not specified."
+    )]
     pub account: Option<String>,
 
     /// Organization name
@@ -119,7 +131,8 @@ mod tests {
 
     #[test]
     fn test_add_collaborator_request() {
-        let json = r#"{"owner": "scottidler", "repo": "gx", "username": "newuser", "permission": "push"}"#;
+        let json =
+            r#"{"owner": "scottidler", "repo": "gx", "username": "newuser", "permission": "push"}"#;
         let request: AddCollaboratorRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.username, "newuser");
         assert_eq!(request.permission, Some("push".to_string()));
